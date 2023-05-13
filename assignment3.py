@@ -1,40 +1,21 @@
 import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
-import numpy as np
 
 df = pd.read_csv('golf_data.csv')
 columns_to_keep = ['player', 'sg_putt', 'sg_arg', 'sg_app', 'sg_ott', 'sg_t2g', 'sg_total']
 df = df[columns_to_keep]
 df = df.dropna()
-ssd = []
-player_names = df['player']
 
-df_numeric = df.select_dtypes(include=[np.number])
+interesting_features = df.columns.tolist()
+interesting_features.remove('player')
 
-for k in range(1, 11):
-    kmeans = KMeans(n_clusters=k, random_state=42)
-    kmeans.fit(df_numeric)
-    ssd.append(kmeans.inertia_)
+pivot_table = df.pivot_table(index='player', values=interesting_features, aggfunc='mean')
+similarity_matrix = cosine_similarity(pivot_table)
+similarity_df = pd.DataFrame(similarity_matrix, index=pivot_table.index, columns=pivot_table.index)
 
-
-plt.plot(range(1, 11), ssd, 'bo-')
-plt.title('The Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('Sum of squared distances')
-plt.show()
-
-kmeans = KMeans(n_clusters=4)
-clusters = kmeans.fit_predict(df_numeric)
-centroids = kmeans.cluster_centers_
-player_cluster = pd.DataFrame(clusters, index=df_numeric.index, columns=['cluster'])
-player_cluster['player'] = df['player']
-print(player_cluster)
-
-for cluster, group in player_cluster.groupby("cluster"):
-    print("Cluster:", cluster, "Size:", group.shape[0])
-    for player in group.sample(5)['player']:
-        print("\t", player)
-
-for idx, centroid in enumerate(centroids):
-    print("Centroid %d: %s" % (idx, centroid))
+players = ['Tiger Woods', 'Rickie Fowler', 'Jon Rahm']
+for player in players:
+    print(f'Top 10 players similar to {player}:')
+    print(similarity_df[player].sort_values(ascending=False)[1:11])
+    print('\n')
